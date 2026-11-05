@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MaldoxFilm — Grafo de Documentación</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { 
+    background: #0d0d0d; 
+    color: #e0e0e0; 
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+  #graph { width: 100%; height: 100%; cursor: grab; }
+  #graph:active { cursor: grabbing; }
+  
+  #tooltip {
+    position: absolute;
+    background: #1a1a2e;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 10px 14px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    font-size: 12px;
+    max-width: 280px;
+    z-index: 100;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+  }
+  #tooltip .tt-path { color: #888; font-size: 11px; margin-bottom: 4px; }
+  #tooltip .tt-name { color: #fff; font-size: 14px; font-weight: 600; margin-bottom: 3px; }
+  #tooltip .tt-connections { color: #aaa; font-size: 11px; }
+
+  #panel {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    background: rgba(26, 26, 46, 0.92);
+    backdrop-filter: blur(12px);
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 16px 20px;
+    z-index: 50;
+    min-width: 240px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+  }
+  #panel h1 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #f0c040;
+    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+  }
+  #panel .stats {
+    font-size: 11px;
+    color: #888;
+    margin-bottom: 12px;
+  }
+  #search {
+    width: 100%;
+    padding: 8px 12px;
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 6px;
+    color: #e0e0e0;
+    font-family: inherit;
+    font-size: 12px;
+    outline: none;
+    margin-bottom: 10px;
+  }
+  #search:focus { border-color: #f0c040; }
+  
+  #legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    font-size: 10px;
+    margin-top: 8px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+  #info {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    font-size: 11px;
+    color: #555;
+    z-index: 50;
+  }
+
+  .link { stroke-opacity: 0.15; }
+  .link.highlight { stroke-opacity: 0.7; stroke-width: 1.5px; }
+  
+  .node-label {
+    font-size: 9px;
+    fill: #888;
+    pointer-events: none;
+    text-anchor: middle;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .node-label.visible { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div id="panel">
+  <h1>MaldoxFilm</h1>
+  <div class="stats" id="stats"></div>
+  <input type="text" id="search" placeholder="Buscar archivo..." autocomplete="off">
+  <div id="legend"></div>
+</div>
+
+<div id="tooltip">
+  <div class="tt-path"></div>
+  <div class="tt-name"></div>
+  <div class="tt-connections"></div>
+</div>
+
+<div id="info">Arrastra para mover · Scroll para zoom · Click para resaltar conexiones</div>
+
+<svg id="graph"></svg>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+const graphData = {
+  nodes: [
+    { id: "README.md", group: "root" },
+    { id: "project-memory.md", group: "root" },
+    { id: "current-sprint.md", group: "root" },
+    { id: "coding-standards.md", group: "root" },
+    { id: "brief-seek-audio-RD.md", group: "root" },
+    { id: "architecture/project-map.md", group: "architecture" },
+    { id: "architecture/business-rules.md", group: "architecture" },
+    { id: "architecture/environment.md", group: "architecture" },
+    { id: "architecture/frontend.md", group: "architecture" },
+    { id: "architecture/routing.md", group: "architecture" },
+    { id: "architecture/state-management.md", group: "architecture" },
+    { id: "architecture/components.md", group: "architecture" },
+    { id: "architecture/player.md", group: "architecture" },
+    { id: "architecture/integrations.md", group: "architecture" },
+    { id: "architecture/realdebrid-api.md", group: "architecture" },
+    { id: "architecture/deployment.md", group: "architecture" },
+    { id: "architecture/security.md", group: "architecture" },
+    { id: "adr/ADR-001.md", group: "adr" },
+    { id: "adr/ADR-002.md", group: "adr" },
+    { id: "adr/ADR-003.md", group: "adr" },
+    { id: "adr/ADR-004.md", group: "adr" },
+    { id: "adr/ADR-005.md", group: "adr" },
+    { id: "adr/ADR-006.md", group: "adr" },
+    { id: "adr/ADR-007.md", group: "adr" },
+    { id: "adr/ADR-008.md", group: "adr" },
+    { id: "sessions/2026-06-09.md", group: "sessions" },
+    { id: "sessions/2026-06-10.md", group: "sessions" },
+    { id: "sessions/2026-06-12.md", group: "sessions" },
+    { id: "sessions/2026-06-13.md", group: "sessions" },
+    { id: "sessions/2026-06-14.md", group: "sessions" },
+    { id: "sessions/2026-06-15.md", group: "sessions" },
+    { id: "sessions/2026-06-16.md", group: "sessions" }
+  ],
+  links: [
+    { source: "README.md", target: "architecture/project-map.md" },
+    { source: "README.md", target: "project-memory.md" },
+    { source: "README.md", target: "current-sprint.md" },
+    { source: "project-memory.md", target: "architecture/security.md" },
+    { source: "current-sprint.md", target: "sessions/2026-06-16.md" },
+    { source: "current-sprint.md", target: "sessions/2026-06-14.md" },
+    { source: "current-sprint.md", target: "sessions/2026-06-13.md" },
+    { source: "current-sprint.md", target: "architecture/project-map.md" },
+    { source: "current-sprint.md", target: "architecture/realdebrid-api.md" },
+    { source: "coding-standards.md", target: "architecture/security.md" },
+    { source: "coding-standards.md", target: "adr/ADR-002.md" },
+    { source: "brief-seek-audio-RD.md", target: "architecture/realdebrid-api.md" },
+    { source: "architecture/project-map.md", target: "README.md" },
+    { source: "architecture/project-map.md", target: "project-memory.md" },
+    { source: "architecture/project-map.md", target: "current-sprint.md" },
+    { source: "architecture/project-map.md", target: "coding-standards.md" },
+    { source: "architecture/project-map.md", target: "architecture/business-rules.md" },
+    { source: "architecture/project-map.md", target: "architecture/environment.md" },
+    { source: "architecture/project-map.md", target: "architecture/frontend.md" },
+    { source: "architecture/project-map.md", target: "architecture/routing.md" },
+    { source: "architecture/project-map.md", target: "architecture/state-management.md" },
+    { source: "architecture/project-map.md", target: "architecture/components.md" },
+    { source: "architecture/project-map.md", target: "architecture/player.md" },
+    { source: "architecture/project-map.md", target: "architecture/integrations.md" },
+    { source: "architecture/project-map.md", target: "architecture/realdebrid-api.md" },
+    { source: "architecture/project-map.md", target: "architecture/deployment.md" },
+    { source: "architecture/project-map.md", target: "architecture/security.md" },
+    { source: "architecture/project-map.md", target: "adr/ADR-001.md" },
+    { source: "architecture/project-map.md", target: "adr/ADR-002.md" },
+    { source: "architecture/project-map.md", target: "adr/ADR-003.md" },
+    { source: "architecture/project-map.md", target: "adr/ADR-004.md" },
+    { source: "architecture/project-map.md", target: "adr/ADR-005.md" },
+    { source: "architecture/project-map.md", target: "adr/ADR-006.md" },
+    { source: "architecture/project-map.md", target: "adr/ADR-007.md" },
+    { source: "architecture/project-map.md", target: "adr/ADR-008.md" },
+    { source: "architecture/realdebrid-api.md", target: "architecture/player.md" },
+    { source: "architecture/realdebrid-api.md", target: "architecture/integrations.md" },
+    { source: "architecture/realdebrid-api.md", target: "adr/ADR-004.md" },
+    { source: "architecture/player.md", target: "architecture/components.md" },
+    { source: "architecture/integrations.md", target: "architecture/security.md" },
+    { source: "architecture/integrations.md", target: "architecture/realdebrid-api.md" },
+    { source: "architecture/integrations.md", target: "architecture/deployment.md" },
+    { source: "architecture/environment.md", target: "architecture/deployment.md" },
+    { source: "architecture/environment.md", target: "architecture/security.md" },
+    { source: "architecture/business-rules.md", target: "architecture/player.md" },
+    { source: "adr/ADR-004.md", target: "architecture/security.md" },
+    { source: "adr/ADR-004.md", target: "architecture/integrations.md" },
+    { source: "adr/ADR-004.md", target: "architecture/player.md" },
+    { source: "adr/ADR-007.md", target: "architecture/player.md" },
+    { source: "adr/ADR-007.md", target: "architecture/components.md" },
+    { source: "adr/ADR-007.md", target: "coding-standards.md" },
+    { source: "sessions/2026-06-09.md", target: "architecture/player.md" },
+    { source: "sessions/2026-06-09.md", target: "architecture/security.md" },
+    { source: "sessions/2026-06-09.md", target: "architecture/deployment.md" },
+    { source: "sessions/2026-06-09.md", target: "architecture/project-map.md" },
+    { source: "sessions/2026-06-10.md", target: "architecture/realdebrid-api.md" }
+  ]
+};
+
+const colors = {
+  root: "#f0c040",
+  architecture: "#4fc3f7",
+  adr: "#ce93d8",
+  sessions: "#81c784"
+};
+
+const groupLabels = {
+  root: "Raíz",
+  architecture: "Arquitectura",
+  adr: "ADR",
+  sessions: "Sesiones"
+};
+
+function shortName(id) {
+  const parts = id.split('/');
+  return parts[parts.length - 1].replace('.md', '');
+}
+
+function folder(id) {
+  const parts = id.split('/');
+  return parts.length > 1 ? parts.slice(0, -1).join('/') : '.';
+}
+
+// Deduplicate links
+const linkMap = new Map();
+graphData.links.forEach(l => {
+  const key = [l.source, l.target].sort().join('|||');
+  if (!linkMap.has(key)) linkMap.set(key, l);
+});
+graphData.links = Array.from(linkMap.values());
+
+// Build node map
+const nodeMap = new Map(graphData.nodes.map(n => [n.id, n]));
+
+// Count connections per node
+const connCount = new Map();
+graphData.nodes.forEach(n => connCount.set(n.id, 0));
+graphData.links.forEach(l => {
+  connCount.set(l.source, (connCount.get(l.source) || 0) + 1);
+  connCount.set(l.target, (connCount.get(l.target) || 0) + 1);
+});
+
+// Stats
+document.getElementById('stats').textContent = 
+  `${graphData.nodes.length} nodos · ${graphData.links.length} aristas`;
+
+// Legend
+const legend = document.getElementById('legend');
+for (const [group, color] of Object.entries(colors)) {
+  const count = graphData.nodes.filter(n => n.group === group).length;
+  legend.innerHTML += `
+    <div class="legend-item">
+      <div class="legend-dot" style="background:${color}"></div>
+      <span>${groupLabels[group]} (${count})</span>
+    </div>`;
+}
+
+// SVG setup
+const svg = d3.select('#graph');
+const width = window.innerWidth;
+const height = window.innerHeight;
+svg.attr('viewBox', [0, 0, width, height]);
+
+const g = svg.append('g');
+
+// Zoom
+const zoom = d3.zoom()
+  .scaleExtent([0.1, 4])
+  .on('zoom', (event) => {
+    g.attr('transform', event.transform);
+    // Hide labels on zoom
+    const scale = event.transform.k;
+    d3.selectAll('.node-label').classed('visible', scale > 0.9);
+  });
+svg.call(zoom);
+
+// Initial scale to fit
+const initialScale = 0.65;
+svg.call(zoom.transform, d3.zoomIdentity.translate(width * 0.45, height * 0.48).scale(initialScale));
+
+// Force simulation
+const simulation = d3.forceSimulation(graphData.nodes)
+  .force('link', d3.forceLink(graphData.links).id(d => d.id).distance(80))
+  .force('charge', d3.forceManyBody().strength(-200))
+  .force('center', d3.forceCenter(width / 2, height / 2))
+  .force('collision', d3.forceCollide().radius(18));
+
+// Draw links
+const link = g.append('g')
+  .selectAll('line')
+  .data(graphData.links)
+  .join('line')
+  .attr('class', 'link')
+  .attr('stroke', '#444')
+  .attr('stroke-width', 1);
+
+// Draw nodes as groups (for label + circle)
+const node = g.append('g')
+  .selectAll('g')
+  .data(graphData.nodes)
+  .join('g')
+  .call(d3.drag()
+    .on('start', (event, d) => {
+      if (!event.active) simulation.alphaTarget(0.3).restart();
+      d.fx = d.x;
+      d.fy = d.y;
+    })
+    .on('drag', (event, d) => {
+      d.fx = event.x;
+      d.fy = event.y;
+    })
+    .on('end', (event, d) => {
+      if (!event.active) simulation.alphaTarget(0);
+      d.fx = null;
+      d.fy = null;
+    }));
+
+// Circles
+node.append('circle')
+  .attr('r', d => Math.max(4, Math.min(14, 4 + (connCount.get(d.id) || 0) * 0.5)))
+  .attr('fill', d => colors[d.group])
+  .attr('stroke', d => d3.color(colors[d.group]).darker(0.3))
+  .attr('stroke-width', 0.8)
+  .style('cursor', 'pointer')
+  .on('mouseenter', (event, d) => {
+    const t = document.getElementById('tooltip');
+    t.querySelector('.tt-path').textContent = folder(d.id) + '/';
+    t.querySelector('.tt-name').textContent = shortName(d.id);
+    t.querySelector('.tt-connections').textContent = 
+      `${connCount.get(d.id) || 0} conexiones`;
+    t.style.opacity = 1;
+    t.style.left = (event.pageX + 14) + 'px';
+    t.style.top = (event.pageY - 14) + 'px';
+  })
+  .on('mousemove', (event) => {
+    const t = document.getElementById('tooltip');
+    t.style.left = (event.pageX + 14) + 'px';
+    t.style.top = (event.pageY - 14) + 'px';
+  })
+  .on('mouseleave', () => {
+    document.getElementById('tooltip').style.opacity = 0;
+  })
+  .on('click', (event, d) => {
+    event.stopPropagation();
+    highlightConnections(d);
+  });
+
+// Labels (only visible when zoomed in or hovered)
+node.append('text')
+  .attr('class', 'node-label')
+  .attr('dy', d => -((connCount.get(d.id) || 0) * 0.5 + 8))
+  .text(d => shortName(d.id));
+
+// Click on background to reset highlights
+svg.on('click', () => highlightConnections(null));
+
+function highlightConnections(selected) {
+  if (selected) {
+    const connected = new Set();
+    connected.add(selected.id);
+    graphData.links.forEach(l => {
+      if (l.source.id === selected.id) connected.add(l.target.id);
+      if (l.target.id === selected.id) connected.add(l.source.id);
+    });
+
+    link.classed('highlight', l => 
+      l.source.id === selected.id || l.target.id === selected.id);
+    
+    node.select('circle')
+      .attr('opacity', d => connected.has(d.id) ? 1 : 0.15)
+      .attr('r', d => {
+        const base = Math.max(4, Math.min(14, 4 + (connCount.get(d.id) || 0) * 0.5));
+        return d.id === selected.id ? base * 1.4 : connected.has(d.id) ? base * 1.15 : base;
+      });
+
+    node.select('text')
+      .classed('visible', d => connected.has(d.id))
+      .attr('opacity', d => connected.has(d.id) ? 1 : 0);
+
+  } else {
+    link.classed('highlight', false);
+    node.select('circle').attr('opacity', 1);
+    node.select('circle').attr('r', d => 
+      Math.max(4, Math.min(14, 4 + (connCount.get(d.id) || 0) * 0.5)));
+    node.select('text').classed('visible', false).attr('opacity', 0);
+  }
+}
+
+// Simulation tick
+simulation.on('tick', () => {
+  link
+    .attr('x1', d => d.source.x)
+    .attr('y1', d => d.source.y)
+    .attr('x2', d => d.target.x)
+    .attr('y2', d => d.target.y);
+
+  node.attr('transform', d => `translate(${d.x},${d.y})`);
+});
+
+// Search
+document.getElementById('search').addEventListener('input', (e) => {
+  const q = e.target.value.toLowerCase().trim();
+  
+  if (!q) {
+    node.select('circle').attr('opacity', 1)
+      .attr('r', d => Math.max(4, Math.min(14, 4 + (connCount.get(d.id) || 0) * 0.5)));
+    node.select('text').classed('visible', false);
+    link.classed('highlight', false).attr('stroke', '#444').attr('stroke-opacity', 0.15);
+    return;
+  }
+
+  const matches = new Set();
+  graphData.nodes.forEach(n => {
+    if (n.id.toLowerCase().includes(q) || shortName(n.id).toLowerCase().includes(q)) {
+      matches.add(n.id);
+    }
+  });
+
+  if (matches.size === 0) return;
+
+  const highlightLinks = new Set();
+  graphData.links.forEach(l => {
+    if (matches.has(l.source.id) && matches.has(l.target.id)) {
+      highlightLinks.add(l);
+    }
+  });
+
+  node.select('circle')
+    .attr('opacity', d => matches.has(d.id) ? 1 : 0.08)
+    .attr('r', d => {
+      const base = Math.max(4, Math.min(14, 4 + (connCount.get(d.id) || 0) * 0.5));
+      return matches.has(d.id) ? base * 1.3 : base;
+    });
+
+  node.select('text')
+    .classed('visible', d => matches.has(d.id))
+    .attr('opacity', d => matches.has(d.id) ? 1 : 0);
+
+  link
+    .attr('stroke', l => highlightLinks.has(l) ? '#f0c040' : '#444')
+    .attr('stroke-opacity', l => highlightLinks.has(l) ? 0.8 : 0.04);
+});
+
+// Resize
+window.addEventListener('resize', () => {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  svg.attr('viewBox', [0, 0, w, h]);
+  simulation.force('center', d3.forceCenter(w / 2, h / 2));
+  simulation.alpha(0.1).restart();
+});
+</script>
+</body>
+</html>

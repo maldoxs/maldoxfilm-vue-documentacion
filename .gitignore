@@ -1,0 +1,7 @@
+# Configuración del editor, no del proyecto
+.obsidian/
+.DS_Store
+
+# Archivos sueltos de pruebas de Obsidian
+Sin título*.canvas
+Sin título*.base
