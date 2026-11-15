@@ -190,7 +190,16 @@ si entra corrido → botón "ajustar al audio": escucha 16 tramos de un minuto,
 
 El botón no aplica nada si la medición no es clara: un subtítulo que no
 corresponde a la copia no tiene arreglo posible y se dice en vez de inventar un
-número.
+número. Son dos controles distintos:
+
+```
+confianza < 1,25                      → película muy ruidosa, sin señal clara
+principio y final difieren 30 s o más → no existe un número que sirva para las
+                                        dos mitades (caso Cat's Eye, 49,3 s)
+```
+
+El segundo se agregó el 2026-11-15. El que había comparaba tramos alternados,
+repartidos los dos por toda la película, así que no podía ver ese caso.
 
 ## 7. Durante la reproducción
 
