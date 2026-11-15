@@ -1,7 +1,7 @@
 # Flujo de reproducción, de punta a punta
 
 > Qué pasa desde que se aprieta Reproducir hasta que la película se ve, con los
-> motivos de cada decisión. Actualizado el 2026-11-05.
+> motivos de cada decisión. Actualizado el 2026-11-15.
 >
 > El detalle de cada arreglo está en `sessions/`; acá va el cuadro completo.
 
@@ -25,7 +25,9 @@ flowchart TD
 
     J --> L{Códec REAL del archivo<br/>según mediaInfos}
     K --> L
-    L -->|video que el navegador no muestra| M[Cambia de reproductor]
+    L -->|video que el navegador no muestra| M{¿Hay otra copia<br/>cacheada?}
+    M -->|sí, se prueba una vez| O
+    M -->|no, o tampoco abre| M2[Cambia de reproductor]
     L -->|audio que no decodifica| N[Conversión en RD]
     L -->|compatible| O[REPRODUCCIÓN DIRECTA]
 
@@ -37,7 +39,7 @@ flowchart TD
     R --> T[Si se corta: reconecta y retoma]
     R --> U[Al terminar: controles a la vista]
 
-    M --> V[UnlimPlay]
+    M2 --> V[UnlimPlay]
     N --> R
     V -->|no responde| W[Cartel: Película no encontrada]
 ```
@@ -87,9 +89,15 @@ Tamaño           2-8 GB +40 · menos de 2 GB +20 · 12-20 GB -40 · más de 20 
 Resolución       1080p +20 · 720p +10 · 4K -40
 Idioma           español/latino +200, y +60 más si el español va primero
 Contenedor       MP4 +8 · MKV -5
+                 .avi .wmv .flv .mpg .vob .divx .rm .m2ts .ogm  -400
 Grabación de cine  -500   (CAM, TELESYNC, 1xbet, 4rabet, melbet y compañía)
 Dirección rota     -300   (Torrentio puso `undefined` donde va el nº de archivo)
 ```
+
+Los contenedores de la segunda línea **no los abre un navegador, con el códec que
+traigan**. Se castigan fuerte y además salen de la clase A (ver abajo). Caso
+*Cat's Eye* (1985): se elegía `Cats Eye.avi` de 700 MB, que por dentro era
+mpeg4/mp3, teniendo en la misma lista una 1080p HEVC cacheada.
 
 El +400 de cacheada **no se baja**: con +200 empataba con el bonus de latino, y
 el desempate caía distinto en cada consulta, así que la misma película daba
@@ -99,7 +107,8 @@ reproducción fluida en una pantalla y lenta en otra.
 
 ```
 Clase A (2)  cacheada + se reproduce sin conversión + no es baja resolución
-             + no es gigante            ← gana siempre, aunque puntúe menos
+             + no es gigante + no es un contenedor que el navegador no abre
+                                        ← gana siempre, aunque puntúe menos
 Clase B (1)  cacheada pero necesita conversión
 Clase C (0)  no cacheada
 ```
@@ -107,6 +116,12 @@ Clase C (0)  no cacheada
 Primero se ordena por clase, después por puntaje. Una copia que se reproduce
 directa siempre le gana a una que haya que convertir, porque la conversión es lo
 que produce los cortes.
+
+**La clase se decide por descarte**: si nada en el nombre dice que necesita
+conversión, se asume que no la necesita. Eso es correcto para los releases
+modernos que no etiquetan el códec, y por eso un `.avi` tenía que quedar fuera a
+mano: ahí la ausencia de etiqueta es lo normal del formato, no una señal de que
+esté bien.
 
 ## 3. Encontrar el archivo en la cuenta de Real-Debrid
 
@@ -131,8 +146,9 @@ Real-Debrid informa qué trae el archivo de verdad (`mediaInfos`). Eso decide, n
 el nombre:
 
 ```
-video que el navegador no puede mostrar   → cambia de reproductor
-   (mpeg4/DivX/Xvid, mpeg2, wmv, vc-1, theora, rv, flv, svq)
+video que el navegador no puede mostrar   → prueba OTRA copia cacheada y,
+   (mpeg4/DivX/Xvid, mpeg2, wmv, vc-1,      si esa tampoco abre, cambia de
+    theora, rv, flv, svq)                   reproductor
 audio que el equipo no decodifica         → conversión
 todo compatible                           → REPRODUCCIÓN DIRECTA
 ```
