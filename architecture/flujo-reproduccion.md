@@ -184,8 +184,9 @@ huella del archivo (tamaño + primeros y últimos 64 KB)
    ↓
 ajuste de sincronía guardado POR ARCHIVO y compartido entre dispositivos
    ↓
-si entra corrido → botón "ajustar al audio": escucha 16 tramos de un minuto,
-                   mide dónde se habla y calcula el corrimiento (~3 min)
+si entra corrido → botón "ajustar al audio": escucha 16 tramos de un minuto y
+                   compara CUÁNDO EMPIEZA A HABLAR alguien contra cuándo empieza
+                   cada línea (~3 min)
 ```
 
 El botón no aplica nada si la medición no es clara: un subtítulo que no
@@ -193,13 +194,16 @@ corresponde a la copia no tiene arreglo posible y se dice en vez de inventar un
 número. Son dos controles distintos:
 
 ```
-confianza < 1,25                      → película muy ruidosa, sin señal clara
-principio y final difieren 30 s o más → no existe un número que sirva para las
-                                        dos mitades (caso Cat's Eye, 49,3 s)
+confianza < 1,25                      → película muy ruidosa: no se aplica nada
+principio y final difieren 30 s o más → el subtítulo es de otra edición: SÍ se
+                                        aplica, con aviso de que más adelante
+                                        puede correrse
 ```
 
-El segundo se agregó el 2026-11-15. El que había comparaba tramos alternados,
-repartidos los dos por toda la película, así que no podía ver ese caso.
+**Se comparan instantes, no áreas.** Hasta el 2026-11-15 se contaba cuánto
+subtítulo caía sobre voz, y eso no distinguía: en Cat's Eye daba +47,2 · +12,1 ·
+−14,9 empatados al 0,3%, y elegía mal por 35 segundos. El método por área quedó
+de respaldo para cuando no hay arranques suficientes.
 
 ## 7. Durante la reproducción
 
