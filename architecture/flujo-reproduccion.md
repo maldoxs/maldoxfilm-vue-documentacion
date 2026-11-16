@@ -94,6 +94,23 @@ Grabación de cine  -500   (CAM, TELESYNC, 1xbet, 4rabet, melbet y compañía)
 Dirección rota     -300   (Torrentio puso `undefined` donde va el nº de archivo)
 ```
 
+**El idioma, en detalle** (orden acordado: latino → español no castellano →
+idioma ORIGINAL → inglés; nunca castellano):
+
+```
+latino                                              +200
+latino listado PRIMERO                               +60
+copia en el IDIOMA ORIGINAL de la película           +80
+inglés u otra copia aceptable                        +10
+doblada a un idioma que no es ES, ni EN, ni original -120
+idioma incompatible sin ES/EN/original            descarte
+```
+
+El +80 del idioma original se agregó el 2026-11-15. Antes, saber el idioma
+original solo servía para **no descartar** la copia; no sumaba nada. Caso
+*Frontier(s)*: la copia francesa cacheada perdía por puntaje bruto contra un MKV
+con DTS que no declara idioma y que el reproductor ya había rechazado con error.
+
 Los contenedores de la segunda línea **no los abre un navegador, con el códec que
 traigan**. Se castigan fuerte y además salen de la clase A (ver abajo). Caso
 *Cat's Eye* (1985): se elegía `Cats Eye.avi` de 700 MB, que por dentro era
@@ -108,6 +125,7 @@ reproducción fluida en una pantalla y lenta en otra.
 ```
 Clase A (2)  cacheada + se reproduce sin conversión + no es baja resolución
              + no es gigante + no es un contenedor que el navegador no abre
+             + no está doblada a un idioma ajeno
                                         ← gana siempre, aunque puntúe menos
 Clase B (1)  cacheada pero necesita conversión
 Clase C (0)  no cacheada
@@ -119,9 +137,22 @@ que produce los cortes.
 
 **La clase se decide por descarte**: si nada en el nombre dice que necesita
 conversión, se asume que no la necesita. Eso es correcto para los releases
-modernos que no etiquetan el códec, y por eso un `.avi` tenía que quedar fuera a
-mano: ahí la ausencia de etiqueta es lo normal del formato, no una señal de que
-esté bien.
+modernos que no etiquetan el códec, pero tiene un efecto perverso que hubo que
+tapar dos veces: **el release que oculta lo que trae le gana al que lo declara.**
+
+```
+Cat's Eye   `Cats Eye.avi`      no declara códec  → entraba a clase A
+                                 por dentro: mpeg4, no se ve
+Frontier(s) `granica720p.mkv`   no declara códec  → entraba a clase A
+                                 por dentro: doblaje ruso primero
+            `...FRENCH...x265`  declara x265      → bajaba a clase B
+```
+
+Por eso la clase A excluye a mano dos cosas que el nombre no delata: los
+contenedores que el navegador no abre, y las copias dobladas a un idioma ajeno.
+El criterio es el mismo: **clase A significa "se ve bien sin intervención"**, y
+en los dos casos la intervención necesaria es imposible. En el doblaje, porque
+en reproducción directa suena la primera pista y el televisor expone una sola.
 
 ## 3. Encontrar el archivo en la cuenta de Real-Debrid
 
