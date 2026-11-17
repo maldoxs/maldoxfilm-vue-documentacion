@@ -1,11 +1,50 @@
 # Project Memory — MaldoxFilm
 
 > Estado VIGENTE del proyecto. No es bitácora histórica (eso va en `sessions/`).
-> Última actualización: 2026-10-18 noche (subtítulos: búsqueda por huella del archivo y
-> botón "ajustar al audio"; reproductores: fin del bucle entre fuentes; TV: ya no se
-> detecta como celular)
+> Última actualización: 2026-11-16 noche (validación de copias con mediaInfos de RD)
 
-## 0.0 ⚡ Estado más reciente (2026-10-18 noche)
+## 0.0 ⚡ Puntos de referencia (2026-11-16)
+
+| Etiqueta | Commit | Estado |
+|---|---|---|
+| **`estable-2026-11-15-noche`** | **`63598bd`** | **Último punto estable verificado en uso.** |
+| `validaciones-audio-2026-11-16` | `2bf87ee` | Desplegado, 485 tests verdes. El camino de respaldos **no está probado todavía en la TV**. |
+
+Volver al punto estable (pierde todo lo del 16-11):
+
+```
+git reset --hard estable-2026-11-15-noche && git push origin main --force
+```
+
+### Qué hacía `63598bd` y lo que trae ese punto (2026-11-15)
+
+- **Selección de copia:** un `.avi` no entra a la clase A (Cat's Eye); la copia en el
+  idioma original suma +80 y una doblada a un idioma ajeno sale de la clase A
+  (Frontier(s)); regla de selección escrita al principio de `streamSelector.ts`.
+- **Ficha:** Dirección y Escritura.
+- **Sincronía de subtítulos (`63598bd` en sí):** la medición corre dos métodos (por
+  área y por arranques de voz) sobre los mismos tramos y solo aplica el ajuste si
+  coinciden con menos de 2 s de diferencia; si no, avisa y ofrece "buscar más a fondo"
+  (32 tramos). Antes se aplicaba un único método que se equivocaba por 35 s en algunas.
+
+### Qué hace `2bf87ee` y lo que trae ese punto (2026-11-16)
+
+Caso *Dreamcatcher*: sonó en checo, luego mudo. La copia elegida (MP4 en inglés) no
+abría a tiempo y el respaldo se elegía por el nombre.
+
+- Toda copia, elegida o respaldo, se valida con `mediaInfos` de RD: la pista que va a
+  sonar se decodifica en el equipo; video que se muestra; pista preferida primera o
+  cambiable; alguna pista en latino, español, original o inglés.
+- Si la elegida falla se prueban hasta 6 copias cacheadas verificadas, en paralelo.
+- En TV, si ninguna sirve, siguiente reproductor en vez de convertir (decisión del
+  usuario). En escritorio, conversión como siempre.
+- En TV, 25 s para abrir una copia que RD ya confirmó (antes 10 s).
+- Los torrents que agrega la verificación se borran al cerrar (ADR-006).
+- Checo, húngaro, sueco, hindi y árabe cuentan como doblaje ajeno.
+
+Detalle completo en [`sessions/2026-11-16.md`](sessions/2026-11-16.md).
+
+## 0.0-hist00 ⚡ Estado anterior (2026-10-18 noche)
 
 **HEAD `a8ce410`.** 418 tests verdes, `vue-tsc -b` OK, build OK, desplegado y
 verificado en producción. Punto estable para volver atrás:
